@@ -17,6 +17,8 @@ using namespace glm;
 
 #include <Windows.h>
 
+#include "Renderer.h"
+
 const char* vertexShader =
 "#version 330 core\n"
 "layout(location = 0) in vec3 vertexPosition;\n"
@@ -248,18 +250,39 @@ void TerminateGLRenderer()
     glDeleteProgram(windowState.shaderProgram);
 }
 
-void RenderToTexture()
+void RenderToTexture(Renderer& renderer)
 {
+    renderer.Render();
+    const Vec3f* rayTracedScene = renderer.GetFrame();
+
+    // Modify the texture
+    for (int i = 0; i < windowState.height; i++)
+    {
+        for (int j = 0; j < windowState.width; j++)
+        {
+            float r = rayTracedScene[i * windowState.width + j].GetX();
+            r *= 255;
+
+            float g = rayTracedScene[i * windowState.width + j].GetY();
+            g *= 255;
+
+            float b = rayTracedScene[i * windowState.width + j].GetZ();
+            b *= 255;
+
+            windowState.rayTracingOutput[3 * (i * windowState.width + j)] = r;
+            windowState.rayTracingOutput[3 * (i * windowState.width + j) + 1] = g;
+            windowState.rayTracingOutput[3 * (i * windowState.width + j) + 2] = b;
+        }
+    }
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, windowState.width, windowState.height, 0,
+        GL_RGB, GL_UNSIGNED_BYTE, windowState.rayTracingOutput);
 }
 
 void RenderGL()
 {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(windowState.shaderProgram);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, windowState.texture);
-    glUniform1d(windowState.textureID, 0);
 
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, windowState.vertexBuffer);
@@ -279,9 +302,22 @@ void RenderGL()
     glfwPollEvents();
 }
 
+void InitRayTracing(Renderer& renderer)
+{
+    renderer.AddSphere(Sphere(Vec3f(0.0f, -10004.0f, -20.0f), 10000.0f, Material(Vec3f(0.20f, 0.20f, 0.20f), 0.0f, 0.0f)));
+    renderer.AddSphere(Sphere(Vec3f(0.0f, 0.0f, -20.0f), 4.0f, Material(Vec3f(1.00f, 0.32f, 0.36f), 1.0f, 0.5f)));
+    renderer.AddSphere(Sphere(Vec3f(5.0f, -1.0f, -15.0f), 2.0f, Material(Vec3f(0.90f, 0.76f, 0.46f), 1.0f, 0.0f)));
+    renderer.AddSphere(Sphere(Vec3f(5.0f, 0.0f, -25.0f), 3.0f, Material(Vec3f(0.65f, 0.77f, 0.97f), 1.0f, 0.0f)));
+    renderer.AddSphere(Sphere(Vec3f(-5.5f, 0.0f, -15.0f), 3.0f, Material(Vec3f(0.90f, 0.90f, 0.90f), 1.0f, 0.0f)));
+
+    renderer.SetLight(Light(Vec3f(0.0f, 20.0f, -30.0f), Vec3f(3.0f, 3.0f, 3.0f)));
+}
+
 int main( void )
 {
     if (!InitWindow()) return -1;
+    Renderer renderer(windowState.width, windowState.height, 30.0f, 5, Vec3f(0.0f, 0.0f, 0.0f));
+    InitRayTracing(renderer);
 
     InitGLRenderer();
 
@@ -297,7 +333,7 @@ int main( void )
     double begin = counter.QuadPart / pc_frequency;
 
     do{
-        RenderToTexture();
+        RenderToTexture(renderer);
         RenderGL();
 
         QueryPerformanceCounter(&counter);
