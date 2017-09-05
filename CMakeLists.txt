@@ -44,6 +44,19 @@ add_definitions(
     -D_CRT_SECURE_NO_WARNINGS
 )
 
+set(SOURCE_FILES
+    src/main.cpp
+    src/Light.h
+    src/Light.cpp
+    src/Material.h
+    src/Material.cpp
+    src/Renderer.h
+    src/Renderer.cpp
+    src/Sphere.h
+    src/Sphere.cpp
+    src/Vec3.h
+)
+
 # Create Binary
-add_executable(RayTracing RayTracing/RayTracing.cpp)
+add_executable(RayTracing ${SOURCE_FILES})
 target_link_libraries(RayTracing ${ALL_LIBS})
