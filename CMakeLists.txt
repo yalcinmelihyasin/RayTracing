@@ -1,27 +1,25 @@
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required (VERSION 2.8)
 project (RayTracing)
 
+#OpenGL is required
 find_package(OpenGL REQUIRED)
 
-if( CMAKE_BINARY_DIR STREQUAL CMAKE_SOURCE_DIR )
-    message( FATAL_ERROR "Please select another Build Directory ! (and give it a clever name, like bin_Visual2012_64bits/)" )
-endif()
-if( CMAKE_SOURCE_DIR MATCHES " " )
-    message( "Your Source Directory contains spaces. If you experience problems when compiling, this can be the cause." )
-endif()
-if( CMAKE_BINARY_DIR MATCHES " " )
-    message( "Your Build Directory contains spaces. If you experience problems when compiling, this can be the cause." )
-endif()
+#CUDA is required
+find_package(CUDA REQUIRED)
 
-#add_subdirectory(external)
-
-# On Visual 2005 and above, this module can set the debug working directory
-cmake_policy(SET CMP0026 OLD)
+set(CUDA_PATH $ENV{CUDA_PATH})
 
 include_directories(
+    #OPENGL related
     external/glfw-3.2.1/include/GLFW/
     external/glm-0.9.8.4/
     external/glew-2.0.0/include/
+
+    #CUDA
+    ${CUDA_PATH}/include/
+
+    #Internal
+    src/
 )
 
 link_directories(
@@ -36,7 +34,6 @@ set(ALL_LIBS
 )
 
 add_definitions(
-    -DTW_STATIC
     -DNO_DEFAULT_LIB
     -DTW_NO_LIB_PRAGMA
     -DTW_NO_DIRECT3D
@@ -44,19 +41,34 @@ add_definitions(
     -D_CRT_SECURE_NO_WARNINGS
 )
 
-set(SOURCE_FILES
-    src/main.cpp
-    src/Light.h
-    src/Light.cpp
-    src/Material.h
-    src/Material.cpp
-    src/Renderer.h
-    src/Renderer.cpp
-    src/Sphere.h
-    src/Sphere.cpp
-    src/Vec3.h
+#CUDA definitions
+set(
+    CUDA_NVCC_FLAGS
+    ${CUDA_NVCC_FLAGS};
+    -gencode arch=compute_30,code=sm_30
 )
 
+source_group(cuda src/cuda/*.*)
+
+set(CUDA_SRCS
+    src/cuda/GPUCode.cu
+    src/cuda/GPUCode.cuh
+)
+
+set(CPU_SRCS
+    src/cpu/main.cpp
+    src/cpu/Light.h
+    src/cpu/Light.cpp
+    src/cpu/Material.h
+    src/cpu/Material.cpp
+    src/cpu/Renderer.h
+    src/cpu/Renderer.cpp
+    src/cpu/Sphere.h
+    src/cpu/Sphere.cpp
+    src/cpu/Vec3.h
+)
+
+
 # Create Binary
-add_executable(RayTracing ${SOURCE_FILES})
+cuda_add_executable(RayTracing ${CUDA_SRCS} ${CPU_SRCS})
 target_link_libraries(RayTracing ${ALL_LIBS})

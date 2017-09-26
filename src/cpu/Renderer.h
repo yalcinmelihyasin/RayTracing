@@ -14,7 +14,7 @@ public:
 
     void AddSphere(const Sphere& sphere);
     void Render();
-    const Vec3f* GetFrame();
+    const float* GetFrame();
 
     void SetLight(const Light& rendererLight) { light = rendererLight; }
 
@@ -26,7 +26,7 @@ private:
     Light light;
 
     //Output & output settings
-    Vec3f* frame;
+    float* frame;
     Vec3f backgroundColor;
 
     //camera variables

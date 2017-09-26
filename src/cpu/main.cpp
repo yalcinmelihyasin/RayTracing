@@ -42,8 +42,7 @@ const char* fragmentShader =
 "    color = texture( myTextureSampler, UV ).rgb;\n"
 "}\n";
 
-static struct
-{
+static struct {
     GLuint frameBuffer;
     GLuint texture;
 
@@ -60,11 +59,9 @@ static struct
 
 }windowState = { 0 };
 
-bool InitWindow()
-{
+bool InitWindow() {
     // Initialise GLFW
-    if (!glfwInit())
-    {
+    if (!glfwInit()) {
         fprintf(stderr, "Failed to initialize GLFW\n");
         getchar();
         return false;
@@ -100,10 +97,10 @@ bool InitWindow()
 
     // Ensure we can capture the escape key being pressed below
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+    return true;
 }
 
-void TerminateWindow()
-{
+void TerminateWindow() {
     glfwDestroyWindow(window);
     // Close OpenGL window and terminate GLFW
     glfwTerminate();
@@ -173,20 +170,7 @@ void InitGLRenderer()
 {
     //Init the rayTracing buffer
     windowState.rayTracingOutput = new uint8_t[windowState.width * windowState.height * 3];
-
-    for (int i = 0; i < windowState.height; i++)
-    {
-        for (int j = 0; j < windowState.width; j++)
-        {
-            float color = i;
-            color /= windowState.height;
-            color *= 255;
-
-            windowState.rayTracingOutput[3 * (i * windowState.width + j)] = color ;
-            windowState.rayTracingOutput[3 * (i * windowState.width + j) + 1] = color;
-            windowState.rayTracingOutput[3 * (i * windowState.width + j) + 2] = color;
-        }
-    }
+    memset(windowState.rayTracingOutput, 0, windowState.width * windowState.height * 3);
 
     // Create the quad spans the screen
     windowState.vertexArray = 0;
@@ -239,8 +223,7 @@ void InitGLRenderer()
     windowState.textureID = glGetUniformLocation(windowState.shaderProgram, "myTextureSampler");
 }
 
-void TerminateGLRenderer()
-{
+void TerminateGLRenderer() {
     delete[] windowState.rayTracingOutput;
     //glDeleteFramebuffers(1, &windowState.frameBuffer);
     glDeleteTextures(1, &windowState.texture);
@@ -250,28 +233,26 @@ void TerminateGLRenderer()
     glDeleteProgram(windowState.shaderProgram);
 }
 
-void RenderToTexture(Renderer& renderer)
-{
+void RenderToTexture(Renderer& renderer) {
     renderer.Render();
-    const Vec3f* rayTracedScene = renderer.GetFrame();
+    const float* rayTracedScene = renderer.GetFrame();
 
     // Modify the texture
-    for (int i = 0; i < windowState.height; i++)
-    {
-        for (int j = 0; j < windowState.width; j++)
-        {
-            float r = rayTracedScene[i * windowState.width + j].GetX();
+    for (int i = 0; i < windowState.height; i++) {
+        for (int j = 0; j < windowState.width; j++) {
+            int index = 3 * (i * windowState.width + j);
+            float r = rayTracedScene[index];
             r *= 255;
 
-            float g = rayTracedScene[i * windowState.width + j].GetY();
+            float g = rayTracedScene[index + 1];
             g *= 255;
 
-            float b = rayTracedScene[i * windowState.width + j].GetZ();
+            float b = rayTracedScene[index + 2];
             b *= 255;
 
-            windowState.rayTracingOutput[3 * (i * windowState.width + j)] = r;
-            windowState.rayTracingOutput[3 * (i * windowState.width + j) + 1] = g;
-            windowState.rayTracingOutput[3 * (i * windowState.width + j) + 2] = b;
+            windowState.rayTracingOutput[3 * (i * windowState.width + j)] = (uint8_t)r;
+            windowState.rayTracingOutput[3 * (i * windowState.width + j) + 1] = (uint8_t)g;
+            windowState.rayTracingOutput[3 * (i * windowState.width + j) + 2] = (uint8_t)b;
         }
     }
 
@@ -279,8 +260,7 @@ void RenderToTexture(Renderer& renderer)
         GL_RGB, GL_UNSIGNED_BYTE, windowState.rayTracingOutput);
 }
 
-void RenderGL()
-{
+void RenderGL() {
     glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(windowState.shaderProgram);
 
@@ -302,8 +282,7 @@ void RenderGL()
     glfwPollEvents();
 }
 
-void InitRayTracing(Renderer& renderer)
-{
+void InitRayTracing(Renderer& renderer) {
     renderer.AddSphere(Sphere(Vec3f(0.0f, -10004.0f, -20.0f), 10000.0f, Material(Vec3f(0.20f, 0.20f, 0.20f), 0.0f, 0.0f)));
     renderer.AddSphere(Sphere(Vec3f(0.0f, 0.0f, -20.0f), 4.0f, Material(Vec3f(1.00f, 0.32f, 0.36f), 1.0f, 0.5f)));
     renderer.AddSphere(Sphere(Vec3f(5.0f, -1.0f, -15.0f), 2.0f, Material(Vec3f(0.90f, 0.76f, 0.46f), 1.0f, 0.0f)));
@@ -313,10 +292,9 @@ void InitRayTracing(Renderer& renderer)
     renderer.SetLight(Light(Vec3f(0.0f, 20.0f, -30.0f), Vec3f(3.0f, 3.0f, 3.0f)));
 }
 
-int main( void )
-{
+int main( void ) {
     if (!InitWindow()) return -1;
-    Renderer renderer(windowState.width, windowState.height, 30.0f, 5, Vec3f(0.0f, 0.0f, 0.0f));
+    Renderer renderer(windowState.width, windowState.height, 30.0f, 5, Vec3f(1.0f, 1.0f, 1.0f));
     InitRayTracing(renderer);
 
     InitGLRenderer();

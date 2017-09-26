@@ -3,9 +3,12 @@
 #include <cmath>
 #include <algorithm>
 
+#include <cuda/GPUCode.cuh>
+
 #ifndef  M_PI
 #define M_PI 3.14159265358979323846f
 #endif // ! M_PI
+
 
 static inline float interpolate(const float &a, const float &b, const float &coeff)
 {
@@ -24,7 +27,7 @@ Renderer::Renderer(int renderWidth, int renderHeight, float renderFOV, int rende
     inverseHeight = 1.0f / height;
     aspectRatio = (float)width / (float)height;
 
-    frame = new Vec3f[width * height];
+    frame = new float[width * height * 3];
 }
 
 Renderer::~Renderer() {
@@ -130,8 +133,9 @@ Vec3f Renderer::Trace(const Vec3f& rayOrigin, const Vec3f rayDirection, const in
 }
 
 void Renderer::Render() {
+#ifdef SOFTWARE_RENDERER
     float degreeToRadian = M_PI / 180.0f;
-    float halfFov= tanf(0.5f * fov * degreeToRadian);
+    float halfFov = tanf(0.5f * fov * degreeToRadian);
 
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
@@ -139,12 +143,15 @@ void Renderer::Render() {
             float yDirection = (1.0f - 2.0f * (y + 0.5f) * inverseHeight) * halfFov;
             Vec3f ray(xDirection, yDirection, -1.0f);
             ray.Normalize();
-            frame[x + y* width] = Trace(Vec3f(0,0,0), ray, 0);
+            frame[x + y* width] = Trace(Vec3f(0, 0, 0), ray, 0);
         }
     }
+#endif
+    float camera[3] = {};
+    return RenderOnGPU(spheres, width, height, camera, 5, frame);
 }
 
-const Vec3f* Renderer::GetFrame()
+const float* Renderer::GetFrame()
 {
     return frame;
 }
