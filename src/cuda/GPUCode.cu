@@ -4,60 +4,70 @@
 #include <cpu/Sphere.h>
 #include <vector>
 
-#include <cuda.h>
+// TODO: Find out why it's required for cuda_gl_interop
+#include <GL/glew.h>
 
-__global__ void RenderKernel(float3* pixels, unsigned int width, unsigned int height) {
+#include <cuda.h>
+#include <cuda_runtime_api.h>
+#include <cuda_gl_interop.h>
+
+#include <cassert>
+
+struct GPUContext
+{
+    bool init;
+    cudaGraphicsResource_t pixelBuffer;
+};
+
+//BGRA texture format
+__global__ void RenderKernel(uchar4* renderTarget, int width) {
     unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int y = blockIdx.y * blockDim.y + threadIdx.y; 
-
-    //if (x >= width || y >= height) return;
-
-    float r = 1.0f;
-    float g = 0.0f;
-    float b = 0.0f;
-
-    pixels[y * width + x] = make_float3(r, g, b);
+    renderTarget[y * width + x] = make_uchar4(x, y, x + y, 255);
 }
 
-__global__ void SetArray(float* a)
-{
-    a[threadIdx.x] = 1.0f;
+
+void CreateGPUContext(GPUContext** context) {
+    *context = (GPUContext*) malloc(sizeof(GPUContext));
+    memset(*context, 0, sizeof(GPUContext));
 }
 
-void RenderOnGPU(std::vector<Sphere> spheres, int width, int height, float cameraPosition[3], int depth, float* pixels)
-{
-    //float degreeToRadian = M_PI / 180.0f;
-    //float halfFov = tanf(0.5f * fov * degreeToRadian);
-
-    //for (int y = 0; y < height; ++y) {
-    //    for (int x = 0; x < width; ++x) {
-    //        float xDirection = (2.0f * (x + 0.5f) * inverseWidth - 1.0f) * halfFov * aspectRatio;
-    //        float yDirection = (1.0f - 2.0f * (y + 0.5f) * inverseHeight) * halfFov;
-    //        Vec3f ray(xDirection, yDirection, -1.0f);
-    //        ray.Normalize();
-    //        frame[x + y* width] = Trace(Vec3f(0, 0, 0), ray, 0);
-    //    }
-    //}
-
-    float3* cudaPixels;
-    int cudaPixelSize = width * height * 3 * sizeof(float);
-    cudaMalloc(&cudaPixels, cudaPixelSize);
-
-    dim3 threadsPerBlock(32, 32);
-    dim3 numBlocks(width / threadsPerBlock.x, height / threadsPerBlock.y);
-
-    RenderKernel<<<numBlocks, threadsPerBlock>>>(cudaPixels, width, height);
-
-    cudaMemcpy(pixels, cudaPixels, cudaPixelSize, cudaMemcpyDeviceToHost);
-    cudaFree(cudaPixels);
+void FreeGPUContext(GPUContext* context) {
+    free(context);
 }
 
-void InitGPURendering()
-{
+void InitGPURendering(GPUContext* context) {
     cudaSetDevice(0);
+    context->init = true;
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, 0);
 }
 
-void CopyImageToGPU(float* pixel, int width, int height)
-{
-    float3* 
+void CopyImageToGPU(GPUContext* context, uint8_t* pixels, int width, int height) {
+    cudaError_t error = cudaGraphicsMapResources(1, &context->pixelBuffer, 0);
+    assert(error == cudaSuccess);
+
+    // Map buffer object
+    uchar4* renderTarget = 0;
+    size_t num_bytes;
+    error = cudaGraphicsResourceGetMappedPointer((void**)&renderTarget, &num_bytes, context->pixelBuffer);
+    assert(renderTarget);
+
+    dim3 threadsPerBlock(16, 16, 1);
+    dim3 numBlocks(width / threadsPerBlock.x, height / threadsPerBlock.y);
+    RenderKernel<<<numBlocks, threadsPerBlock>>>(renderTarget, width);
+
+    // Unmap buffer object
+    error = cudaGraphicsUnmapResources(1, &context->pixelBuffer, 0);
+    assert(error == cudaSuccess);
+}
+
+void RegisterPixelBuffer(GPUContext* context, GLuint buffer) {
+    cudaError_t error = cudaGraphicsGLRegisterBuffer(&context->pixelBuffer, buffer,
+        cudaGraphicsMapFlagsWriteDiscard);
+    assert(error == cudaSuccess);
+}
+
+void UnregisterPixelBuffer(GPUContext* context) {
+    cudaGraphicsUnregisterResource(context->pixelBuffer);
 }

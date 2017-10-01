@@ -15,9 +15,11 @@ GLFWwindow* window;
 #include <glm/glm.hpp>
 using namespace glm;
 
-#include <Windows.h>
+#include "cuda/GPUCode.cuh"
 
 #include "Renderer.h"
+
+#include <Windows.h>
 
 const char* vertexShader =
 "#version 330 core\n"
@@ -43,7 +45,6 @@ const char* fragmentShader =
 "}\n";
 
 static struct {
-    GLuint frameBuffer;
     GLuint texture;
 
     GLuint vertexArray;
@@ -51,11 +52,12 @@ static struct {
     GLuint uvBuffer;
 
     GLuint shaderProgram;
-    GLuint textureID;
+    GLuint gpuBuffer;
+
+    GPUContext* gpuContext;
 
     int width;
     int height;
-    uint8_t* rayTracingOutput;
 
 }windowState = { 0 };
 
@@ -97,6 +99,10 @@ bool InitWindow() {
 
     // Ensure we can capture the escape key being pressed below
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+
+    // Disable VSYNC
+    glfwSwapInterval(0);
+
     return true;
 }
 
@@ -168,10 +174,6 @@ GLuint LoadShaders(const char * vertexShaderCode, const char * fragmentShaderCod
 
 void InitGLRenderer()
 {
-    //Init the rayTracing buffer
-    windowState.rayTracingOutput = new uint8_t[windowState.width * windowState.height * 3];
-    memset(windowState.rayTracingOutput, 0, windowState.width * windowState.height * 3);
-
     // Create the quad spans the screen
     windowState.vertexArray = 0;
     glGenVertexArrays(1, &windowState.vertexArray);
@@ -207,57 +209,44 @@ void InitGLRenderer()
     glBindBuffer(GL_ARRAY_BUFFER, windowState.uvBuffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(uvBufferData), uvBufferData, GL_STATIC_DRAW);
 
+    size_t bufferSize = windowState.width * windowState.height * 4;
+
+    glGenBuffers(1, &windowState.gpuBuffer);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, windowState.gpuBuffer);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, bufferSize, nullptr, GL_DYNAMIC_COPY);
+    RegisterPixelBuffer(windowState.gpuContext, windowState.gpuBuffer);
+
     // Create opengl texture
     windowState.texture = 0;
     glGenTextures(1, &windowState.texture);
     glBindTexture(GL_TEXTURE_2D, windowState.texture);
 
     // Set image to texture
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, windowState.width, windowState.height, 0,
-        GL_RGB, GL_UNSIGNED_BYTE, windowState.rayTracingOutput);
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, windowState.width, windowState.height, 0, GL_BGRA,
+    GL_UNSIGNED_BYTE, nullptr);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
     windowState.shaderProgram = LoadShaders(vertexShader, fragmentShader);
-    windowState.textureID = glGetUniformLocation(windowState.shaderProgram, "myTextureSampler");
 }
 
 void TerminateGLRenderer() {
-    delete[] windowState.rayTracingOutput;
-    //glDeleteFramebuffers(1, &windowState.frameBuffer);
+    UnregisterPixelBuffer(windowState.gpuContext);
     glDeleteTextures(1, &windowState.texture);
-    glDeleteVertexArrays(1, &windowState.vertexArray);
     glDeleteBuffers(1, &windowState.vertexBuffer);
     glDeleteBuffers(1, &windowState.uvBuffer);
+    glDeleteBuffers(1, &windowState.gpuBuffer);
+
+    glDeleteVertexArrays(1, &windowState.vertexArray);
     glDeleteProgram(windowState.shaderProgram);
 }
 
 void RenderToTexture(Renderer& renderer) {
-    renderer.Render();
-    const float* rayTracedScene = renderer.GetFrame();
+    renderer.Render(windowState.gpuContext);
 
-    // Modify the texture
-    for (int i = 0; i < windowState.height; i++) {
-        for (int j = 0; j < windowState.width; j++) {
-            int index = 3 * (i * windowState.width + j);
-            float r = rayTracedScene[index];
-            r *= 255;
-
-            float g = rayTracedScene[index + 1];
-            g *= 255;
-
-            float b = rayTracedScene[index + 2];
-            b *= 255;
-
-            windowState.rayTracingOutput[3 * (i * windowState.width + j)] = (uint8_t)r;
-            windowState.rayTracingOutput[3 * (i * windowState.width + j) + 1] = (uint8_t)g;
-            windowState.rayTracingOutput[3 * (i * windowState.width + j) + 2] = (uint8_t)b;
-        }
-    }
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, windowState.width, windowState.height, 0,
-        GL_RGB, GL_UNSIGNED_BYTE, windowState.rayTracingOutput);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, windowState.width, windowState.height,
+        GL_BGRA, GL_UNSIGNED_BYTE, nullptr);
 }
 
 void RenderGL() {
@@ -297,6 +286,9 @@ int main( void ) {
     Renderer renderer(windowState.width, windowState.height, 30.0f, 5, Vec3f(1.0f, 1.0f, 1.0f));
     InitRayTracing(renderer);
 
+    CreateGPUContext(&windowState.gpuContext);
+    InitGPURendering(windowState.gpuContext);
+
     InitGLRenderer();
 
     LARGE_INTEGER freq;
@@ -327,12 +319,12 @@ int main( void ) {
             fps = 0;
             begin = end;
         }
-
     } // Check if the ESC key was pressed or the window was closed
     while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
            glfwWindowShouldClose(window) == 0 );
 
     TerminateGLRenderer();
+    FreeGPUContext(windowState.gpuContext);
     TerminateWindow();
 
     return 0;

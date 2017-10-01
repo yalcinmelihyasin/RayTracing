@@ -27,7 +27,7 @@ Renderer::Renderer(int renderWidth, int renderHeight, float renderFOV, int rende
     inverseHeight = 1.0f / height;
     aspectRatio = (float)width / (float)height;
 
-    frame = new float[width * height * 3];
+    frame = new uint8_t[width * height * 4];
 }
 
 Renderer::~Renderer() {
@@ -132,26 +132,26 @@ Vec3f Renderer::Trace(const Vec3f& rayOrigin, const Vec3f rayDirection, const in
     return pixelColor;
 }
 
-void Renderer::Render() {
-#ifdef SOFTWARE_RENDERER
-    float degreeToRadian = M_PI / 180.0f;
-    float halfFov = tanf(0.5f * fov * degreeToRadian);
+void Renderer::Render(GPUContext* cudaContext) {
+    //float degreeToRadian = M_PI / 180.0f;
+    //float halfFov = tanf(0.5f * fov * degreeToRadian);
 
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            float xDirection = (2.0f * (x + 0.5f) * inverseWidth - 1.0f) * halfFov * aspectRatio;
-            float yDirection = (1.0f - 2.0f * (y + 0.5f) * inverseHeight) * halfFov;
-            Vec3f ray(xDirection, yDirection, -1.0f);
-            ray.Normalize();
-            frame[x + y* width] = Trace(Vec3f(0, 0, 0), ray, 0);
-        }
-    }
-#endif
-    float camera[3] = {};
-    return RenderOnGPU(spheres, width, height, camera, 5, frame);
-}
+    //for (int y = 0; y < height; ++y) {
+    //    for (int x = 0; x < width; ++x) {
+    //        float xDirection = (2.0f * (x + 0.5f) * inverseWidth - 1.0f) * halfFov * aspectRatio;
+    //        float yDirection = (1.0f - 2.0f * (y + 0.5f) * inverseHeight) * halfFov;
+    //        Vec3f ray(xDirection, yDirection, -1.0f);
+    //        ray.Normalize();
+    //        //Vec3f const& currentFrame = Trace(Vec3f(0, 0, 0), ray, 0);
+    //        int index = (x + y * width) * 4;
+    //        frame[index] = 255;
+    //        frame[index + 1] = 0;
+    //        frame[index + 2] = 0;
+    //        frame[index + 3] = 0;
+    //    }
+    //}
 
-const float* Renderer::GetFrame()
-{
-    return frame;
+    CopyImageToGPU(cudaContext, frame, width, height);
+    //float camera[3] = {};
+    //return RenderOnGPU(spheres, width, height, camera, 5, frame);
 }

@@ -1,16 +1,23 @@
-#ifndef _MY_INCLUDE_
-#define _MY_INCLUDE_
+#pragma once
 
 #include "cpu/Sphere.h"
-#include <vector>
+#include <stdint.h>
 
-struct Sphere_GPU
-{
+typedef struct GPUContext GPUContext;
+
+#ifndef GLuint
+typedef unsigned int GLuint;
+#endif
+
+struct SphereGPU {
     float center[3];
     float radius;
 };
 
-void InitGPURendering();
-void RenderOnGPU(std::vector<Sphere> spheres, int width, int height, float cameraPosition[3], int depth, float* pixels);
+void CreateGPUContext(GPUContext** context);
+void FreeGPUContext(GPUContext* context);
 
-#endif
+void InitGPURendering(GPUContext* context);
+void CopyImageToGPU(GPUContext* context, uint8_t* pixels, int width, int height);
+void RegisterPixelBuffer(GPUContext* context, GLuint bufferId);
+void UnregisterPixelBuffer(GPUContext* context);

@@ -5,6 +5,8 @@
 
 #include <vector>
 
+typedef struct GPUContext GPUContext;
+
 class Renderer
 {
 public:
@@ -13,8 +15,7 @@ public:
     ~Renderer();
 
     void AddSphere(const Sphere& sphere);
-    void Render();
-    const float* GetFrame();
+    void Render(GPUContext* cudaContext);
 
     void SetLight(const Light& rendererLight) { light = rendererLight; }
 
@@ -26,7 +27,7 @@ private:
     Light light;
 
     //Output & output settings
-    float* frame;
+    uint8_t* frame;
     Vec3f backgroundColor;
 
     //camera variables
