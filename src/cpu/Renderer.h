@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Sphere.h"
-#include "Light.h"
+#include "cuda/GPUCode.cuh"
 
 #include <vector>
 
@@ -10,38 +9,16 @@ typedef struct GPUContext GPUContext;
 class Renderer
 {
 public:
-    Renderer(int renderWidth, int renderHeight, float renderFOV, int renderMaxDepth,
-        const Vec3f& renderBackgroundColor);
-    ~Renderer();
+    Renderer(int width, int height, float fov, int maxDepth, float bgColor[3]);
 
-    void AddSphere(const Sphere& sphere);
+    void AddSphere(SphereGPU* sphere);
     void Render(GPUContext* cudaContext);
-
-    void SetLight(const Light& rendererLight) { light = rendererLight; }
-
-    int GetWidth() { return width; }
-    int GetHeight() { return height; }
 private:
     //Renderable object collection
-    std::vector<Sphere> spheres;
-    Light light;
-
-    //Output & output settings
-    uint8_t* frame;
-    Vec3f backgroundColor;
+    std::vector<SphereGPU> spheres;
 
     //camera variables
-    int width;
-    int height;
-    float inverseWidth;
-    float inverseHeight;
-    float fov;
-    float aspectRatio;
-
-    // Ray tracing settings
-    int maxDepth;
-
-    Vec3f Trace(const Vec3f& origin, const Vec3f direction, const int depth);
+    CameraGPU camera;
 
     Renderer() = delete;
     Renderer(const Renderer&) = delete;

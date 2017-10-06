@@ -57,15 +57,8 @@ set(CUDA_SRCS
 
 set(CPU_SRCS
     src/cpu/main.cpp
-    src/cpu/Light.h
-    src/cpu/Light.cpp
-    src/cpu/Material.h
-    src/cpu/Material.cpp
     src/cpu/Renderer.h
     src/cpu/Renderer.cpp
-    src/cpu/Sphere.h
-    src/cpu/Sphere.cpp
-    src/cpu/Vec3.h
 )
 
 

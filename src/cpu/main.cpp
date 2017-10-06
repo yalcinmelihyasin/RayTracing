@@ -1,8 +1,5 @@
-// Include standard headers
-#include <stdio.h>
-#include <stdlib.h>
-
-#include <vector>
+#include "Renderer.h"
+#include "cuda/GPUCode.cuh"
 
 // Include GLEW
 #include <GL/glew.h>
@@ -13,13 +10,16 @@ GLFWwindow* window;
 
 // Include GLM
 #include <glm/glm.hpp>
-using namespace glm;
 
-#include "cuda/GPUCode.cuh"
+#include <vector>
 
-#include "Renderer.h"
+// Include standard headers
+#include <stdio.h>
+#include <stdlib.h>
 
 #include <Windows.h>
+
+using namespace glm;
 
 const char* vertexShader =
 "#version 330 core\n"
@@ -75,8 +75,8 @@ bool InitWindow() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    windowState.width = 640;
-    windowState.height = 480;
+    windowState.width = 1024;
+    windowState.height = 768;
 
     // Open a window and create its OpenGL context
     window = glfwCreateWindow(windowState.width, windowState.height, "Ray Tracing", NULL, NULL);
@@ -100,7 +100,7 @@ bool InitWindow() {
     // Ensure we can capture the escape key being pressed below
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
-    // Disable VSYNC
+    // Disable VSYNC : Just to test do not burn the GPU :D
     glfwSwapInterval(0);
 
     return true;
@@ -272,18 +272,25 @@ void RenderGL() {
 }
 
 void InitRayTracing(Renderer& renderer) {
-    renderer.AddSphere(Sphere(Vec3f(0.0f, -10004.0f, -20.0f), 10000.0f, Material(Vec3f(0.20f, 0.20f, 0.20f), 0.0f, 0.0f)));
-    renderer.AddSphere(Sphere(Vec3f(0.0f, 0.0f, -20.0f), 4.0f, Material(Vec3f(1.00f, 0.32f, 0.36f), 1.0f, 0.5f)));
-    renderer.AddSphere(Sphere(Vec3f(5.0f, -1.0f, -15.0f), 2.0f, Material(Vec3f(0.90f, 0.76f, 0.46f), 1.0f, 0.0f)));
-    renderer.AddSphere(Sphere(Vec3f(5.0f, 0.0f, -25.0f), 3.0f, Material(Vec3f(0.65f, 0.77f, 0.97f), 1.0f, 0.0f)));
-    renderer.AddSphere(Sphere(Vec3f(-5.5f, 0.0f, -15.0f), 3.0f, Material(Vec3f(0.90f, 0.90f, 0.90f), 1.0f, 0.0f)));
+    SphereGPU sphere1 = { { 0.0f, -10004.0f, -20.0f },  10000.0f,   0.20f, 0.20f, 0.20f };
+    SphereGPU sphere2 = { { 0.0f, 0.0f, -20.0f },       4.0f,       1.00f, 0.32f, 0.36f };
+    SphereGPU sphere3 = { { 5.0f, -1.0f, -15.0f },      2.0f,       0.90f, 0.76f, 0.46f };
+    SphereGPU sphere4 = { { 5.0f, 0.0f, -25.0f },       3.0f,       0.65f, 0.77f, 0.97f };
+    SphereGPU sphere5 = { { -5.5f, 0.0f, -15.0f },      3.0f,       0.90f, 0.90f, 0.90f };
 
-    renderer.SetLight(Light(Vec3f(0.0f, 20.0f, -30.0f), Vec3f(3.0f, 3.0f, 3.0f)));
+    renderer.AddSphere(&sphere1);
+    renderer.AddSphere(&sphere2);
+    renderer.AddSphere(&sphere3);
+    renderer.AddSphere(&sphere4);
+    renderer.AddSphere(&sphere5);
+
 }
 
 int main( void ) {
     if (!InitWindow()) return -1;
-    Renderer renderer(windowState.width, windowState.height, 30.0f, 5, Vec3f(1.0f, 1.0f, 1.0f));
+    float bgColor[3] = {1.0f, 1.0f, 1.0f};
+
+    Renderer renderer(windowState.width, windowState.height, 30.0f, 5, bgColor);
     InitRayTracing(renderer);
 
     CreateGPUContext(&windowState.gpuContext);
