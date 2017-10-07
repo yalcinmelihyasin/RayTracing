@@ -48,20 +48,29 @@ set(
     -gencode arch=compute_30,code=sm_30
 )
 
-source_group(cuda src/cuda/*.*)
+source_group(gpu_code src/gpu_code/*.*)
+source_group(cpu_code src/cpu_code/*.*)
+source_group(binding src/binding/*.*)
 
-set(CUDA_SRCS
-    src/cuda/GPUCode.cu
-    src/cuda/GPUCode.cuh
+set(GPU_SRCS
+    src/gpu_code/Renderer.cu
+    src/gpu_code/Renderer.cuh
 )
 
 set(CPU_SRCS
-    src/cpu/main.cpp
-    src/cpu/Renderer.h
-    src/cpu/Renderer.cpp
+    src/cpu_code/main.cpp
+    src/cpu_code/Renderer.h
+    src/cpu_code/Renderer.cpp
 )
 
+set(BINDING_SRCS
+    src/binding/GPUTypes.h
+    src/binding/GPUBinding.h
+    src/binding/GPUBinding.cpp
+    src/binding/GLBinding.h
+    src/binding/GLBinding.cpp
+)
 
 # Create Binary
-cuda_add_executable(RayTracing ${CUDA_SRCS} ${CPU_SRCS})
+cuda_add_executable(RayTracing ${GPU_SRCS} ${CPU_SRCS} ${BINDING_SRCS})
 target_link_libraries(RayTracing ${ALL_LIBS})
