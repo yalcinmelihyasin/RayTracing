@@ -66,29 +66,85 @@ void TerminateWindow(GLFWwindow* window) {
     glfwTerminate();
 }
 
-void AddPrimitives(Renderer* renderer) {
+void AddPrimitives(Renderer* renderer, float deltaTime) {
 
     static float z = 0.0f;
-    static float movement = 0.1f;
+    static float movement = 0.06f;
+    static float distance = 60.0f;
 
-    z += movement;
-    if (z > 30.0f || z < -30.0f ) movement *= -1;
+    z += movement * deltaTime;
+    if (z > distance || z < -distance ) movement *= -1;
 
     RTSphere spheres[] = {
-        { { 0.0f, -10004.0f, -20.0f, 1.0f },  10000.0f, { { 0.20f, 0.20f, 0.20f, 1.0f }, 0.0f, 1.0f, 0.0f } },
-        { { 0.0f, 0.0f, -20.0f, 1.0f },       4.0f,     { { 1.00f, 0.32f, 0.36f, 1.0f }, 1.0f, 0.5f, 0.0f } },
+        { { 0.0f, -10004.0f, -20.0f, 1.0f },  10000.0f, { { 0.20f, 0.20f, 0.20f, 1.0f }, 1.0f, 0.0f, 0.0f } },
+        { { 0.0f, 0.0f, -20.0f, 1.0f },       4.0f,     { { 1.00f, 0.32f, 0.36f, 1.0f }, 1.0f, 1.0f, 0.0f } },
         { { 5.0f, -1.0f, -15.0f, 1.0f },      2.0f,     { { 0.90f, 0.76f, 0.46f, 1.0f }, 1.0f, 0.0f, 0.0f } },
         { { 5.0f, 0.0f, -25.0f, 1.0f },       3.0f,     { { 0.65f, 0.77f, 0.97f, 1.0f }, 1.0f, 0.0f, 0.0f } },
-        { { -5.5f, 0.0f, -15.0f, 1.0f },      3.0f,     { { 0.90f, 0.90f, 0.90f, 1.0f }, 1.0f, 0.0f, 0.0f } },
-        { { 0.0f, 20.0f, z, 1.0f },           3.0f,     { { 3.3f,  3.4f,  3.5f,  1.0f }, 0.0f, 0.0f, 1.0f } }
+        { { -5.5f, 0.0f, -15.0f, 1.0f },      3.0f,     { { 0.00f, 1.00f, 0.00f, 1.0f }, 1.0f, 0.0f, 0.0f } },
+        { { -20.0f, 20.0f, z, 1.0f },         3.0f,     { { 0.9f,  0.95f, 1.0f,  1.0f }, 0.0f, 0.0f, 3.3f } }
     };
 
     AddSpheresToRenderer(renderer, spheres, 6);
 }
 
+static struct {
+    double pc_freq;
+    double second_start;
+    double previousTime;
+    float deltaTime;
+    LARGE_INTEGER counter;
+    char fps_string[10];
+    int fps = 0;
+} timeProperties;
+
+void HandleTime() {
+    QueryPerformanceCounter(&timeProperties.counter);
+    double end = timeProperties.counter.QuadPart / timeProperties.pc_freq;
+
+    if (end - timeProperties.second_start < 1000.0f) {
+        ++timeProperties.fps;
+    }
+    else {
+        memset(timeProperties.fps_string, 0, 10);
+        sprintf(timeProperties.fps_string, "%d\n", timeProperties.fps);
+        OutputDebugStringA(timeProperties.fps_string);
+        timeProperties.fps = 0;
+        timeProperties.second_start = end;
+    }
+
+    timeProperties.deltaTime = end - timeProperties.previousTime;
+    timeProperties.previousTime = end;
+}
+
+static struct {
+    int previousIncreaseState;
+    int previousDecreaseState;
+} inputProperties;
+
+int HandleInput(GLFWwindow* window, int depth) {
+    int currentState = glfwGetKey(window, GLFW_KEY_KP_ADD);
+
+    if (currentState == GLFW_PRESS && inputProperties.previousIncreaseState == GLFW_RELEASE) {
+        depth = ((depth + 1) % 10 + 10) % 10;
+        printf("Depth increased! %d\n", depth);
+    }
+
+    inputProperties.previousIncreaseState = currentState;
+    currentState = glfwGetKey(window, GLFW_KEY_KP_SUBTRACT);
+
+    if (currentState == GLFW_PRESS && inputProperties.previousDecreaseState == GLFW_RELEASE) {
+        depth = ((depth - 1) % 10 + 10) % 10;
+        printf("Depth decreased! %d\n", depth);
+    }
+
+    inputProperties.previousDecreaseState = currentState;
+    return depth;
+}
+
 int main( void ) {
     int width = 1024;
     int height = 768;
+    int depth = 0;
 
     GLFWwindow* window = nullptr;
     if (!InitWindow(&window, width, height)) return -1;
@@ -100,38 +156,26 @@ int main( void ) {
 
     float cameraPosition[3] = { 0 };
     float cameraRotation[3] = { 0 };
-    float bgColor[3] = { 1.0f, 1.0f, 1.0f };
+    float bgColor[3] = { 0.53f, 0.81f, 0.98f };
     SetRendererCamera(renderer, cameraPosition, cameraRotation, 45, bgColor);
 
-    LARGE_INTEGER freq;
-    QueryPerformanceFrequency(&freq);
-    double pc_frequency = freq.QuadPart / 1000.0;
+    QueryPerformanceFrequency(&timeProperties.counter);
+    timeProperties.pc_freq = timeProperties.counter.QuadPart / 1000.0;
 
-    char fps_string[10];
-    int fps = 0;
+    QueryPerformanceCounter(&timeProperties.counter);
+    timeProperties.second_start = timeProperties.counter.QuadPart / timeProperties.pc_freq;
+    timeProperties.previousTime = timeProperties.second_start;
 
-    LARGE_INTEGER counter;
-    QueryPerformanceCounter(&counter);
-    double begin = counter.QuadPart / pc_frequency;
+    inputProperties.previousDecreaseState = GLFW_RELEASE;
+    inputProperties.previousIncreaseState = GLFW_RELEASE;
 
     do{
         ClearRendererFrame(renderer);
-        AddPrimitives(renderer);
-        RenderFrame(renderer, 1);
+        AddPrimitives(renderer, timeProperties.deltaTime);
+        RenderFrame(renderer, depth);
 
-        QueryPerformanceCounter(&counter);
-        double end = counter.QuadPart / pc_frequency;
-
-        if (end - begin < 1000.0f) {
-            ++fps;
-        }
-        else {
-            memset(fps_string, 0, 10);
-            sprintf(fps_string, "%d\n", fps);
-            OutputDebugStringA(fps_string);
-            fps = 0;
-            begin = end;
-        }
+        HandleTime();
+        depth = HandleInput(window, depth);
     } // Check if the ESC key was pressed or the window was closed
     while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
            glfwWindowShouldClose(window) == 0 );
