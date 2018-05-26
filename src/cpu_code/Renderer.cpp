@@ -9,9 +9,6 @@
 #include <memory.h>
 
 
-static_assert(sizeof(Sphere) == sizeof(RTSphere), "Size of internal types should be equal to public types!");
-static_assert(sizeof(Material) == sizeof(RTMaterial), "Size of internal types should be equal to public types!");
-
 struct Frame {
     std::vector<Sphere> spheres;
     int maxDepth;
@@ -59,26 +56,24 @@ void TerminateRenderer(Renderer* renderer) {
     TerminateGLRendering(renderer->glContext, renderer->gpuContext);
 }
 
+inline static void Float3ArrayToFloat4(float4* out, float in[3], float w) {
+    out->x = in[0];
+    out->y = in[1];
+    out->z = in[2];
+    out->w = w;
+}
+
 void SetRendererCamera(Renderer* renderer, float position[3], float rotation[3], float fov, float backgroundColor[3]) {
     Camera* camera = &renderer->camera;
-
-    memcpy(&camera->bgColor, backgroundColor, sizeof(float) * 3);
-    camera->bgColor.w = 1.0f;
-
-    memcpy(&camera->position, position, sizeof(float) * 3);
-    camera->position.w = 1.0f;
-
-    memcpy(&camera->rotation, rotation, sizeof(float) * 3);
-    camera->rotation.w = 1.0f;
-
+    Float3ArrayToFloat4(&camera->bgColor, backgroundColor, 1.0f);
+    Float3ArrayToFloat4(&camera->position, position, 1.0f);
+    Float3ArrayToFloat4(&camera->rotation, rotation, 1.0f);
     camera->fov = fov;
 }
 
 void AddSpheresToRenderer(Renderer* renderer, RTSphere* spheres, int numberOfSpheres) {
-    Sphere* gpuSpheres = (Sphere*)spheres;
-
     for (int i = 0; i < numberOfSpheres; i++) {
-        renderer->currentFrame.spheres.emplace_back(gpuSpheres[i]);
+        renderer->currentFrame.spheres.emplace_back(&spheres[i]);
     }
 }
 

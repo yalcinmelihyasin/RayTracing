@@ -66,7 +66,7 @@ void TerminateWindow(GLFWwindow* window) {
     glfwTerminate();
 }
 
-void AddPrimitives(Renderer* renderer, float deltaTime) {
+void AddPrimitives(Renderer* renderer, double deltaTime) {
 
     static float z = 0.0f;
     static float movement = 0.06f;
@@ -91,7 +91,7 @@ static struct {
     double pc_freq;
     double second_start;
     double previousTime;
-    float deltaTime;
+    double deltaTime;
     LARGE_INTEGER counter;
     char fps_string[10];
     int fps = 0;

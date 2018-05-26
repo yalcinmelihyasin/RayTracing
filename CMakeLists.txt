@@ -61,10 +61,12 @@ set(CPU_SRCS
     src/cpu_code/main.cpp
     src/cpu_code/Renderer.h
     src/cpu_code/Renderer.cpp
+    src/cpu_code/CPUTypes.h
 )
 
 set(BINDING_SRCS
     src/binding/GPUTypes.h
+    src/binding/GPUTypes.cpp
     src/binding/GPUBinding.h
     src/binding/GPUBinding.cpp
     src/binding/GLBinding.h

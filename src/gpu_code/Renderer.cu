@@ -53,7 +53,6 @@ inline __device__ float4& operator *=(float4& a, float c)
     return a;
 }
 
-
 inline __device__ float4 saturate_vector(float4 v) {
     return make_float4(
         __saturatef(v.x),
@@ -75,11 +74,15 @@ inline __device__ float dot3(float4 a, float4 b) {
 }
 
 inline __device__ float length3(float4 a) {
-    return a.x * a.x + a.y * a.y + a.z * a.z;
+    return sqrtf(a.x * a.x + a.y * a.y + a.z * a.z);
+}
+
+inline __device__ float inv_length3(float4 a) {
+    return __frsqrt_rn(a.x * a.x + a.y * a.y + a.z * a.z);
 }
 
 inline __device__ float4 normalize3(float4 v) {
-    float invLen = __frsqrt_rn(length3(v));
+    float invLen = inv_length3(v);
     return v * invLen;
 }
 
@@ -206,7 +209,7 @@ inline __device__ void PrepareTrace(Material const* sphereMaterial , PixelInform
 
     float fresnelEffect = interpolate(powf(1.0f + cosRayNormal, 3), 1.0f, 0.1f);
 
-    const float treshhold = 1e-5f;
+    const float treshhold = 0.005f;
 
     if (sphereMaterial->reflection > 0.0f) {
         float4 reflectionDirection = pixelInfo->currentRayDirection - 2.0f * cosRayNormal * hitNormal;

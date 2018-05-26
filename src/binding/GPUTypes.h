@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cpu_code/CPUTypes.h"
 #include <vector_types.h>
 
 struct Viewport {
@@ -7,7 +8,6 @@ struct Viewport {
     int height;
     float aspectRatio;
 };
-
 
 // TODO: turn this into a real camera model
 struct Camera {
@@ -28,4 +28,6 @@ struct Sphere {
     float4 center;
     float radius;
     Material material;
+
+    Sphere(RTSphere* sphere);
 };

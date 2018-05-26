@@ -1,17 +1,6 @@
 #pragma once
 
-struct RTMaterial {
-    alignas(16) float color[4];
-    float reflection;
-    float transparency;
-    float emission;
-};
-
-struct RTSphere {
-    alignas(16) float position[4];
-    float radius;
-    RTMaterial material;
-};
+#include "CPUTypes.h"
 
 typedef struct Renderer Renderer;
 typedef struct GLFWwindow GLFWwindow;
